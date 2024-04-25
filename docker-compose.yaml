@@ -1,0 +1,47 @@
+version: "3"
+services:
+    database:
+        init: true
+        container_name: database
+        image: postgres:16.2-alpine3.19
+        environment:
+            POSTGRES_USER: postgres_user
+            POSTGRES_PASSWORD: postgres_pw
+            POSTGRES_DB: postgres_db
+        shm_size: 256mb
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres_user -d postgres_db"]
+            interval: 3s
+            timeout: 5s
+            retries: 5
+    
+    notify:
+        init: true
+        container_name: notify-service
+        build:
+            context: .
+            dockerfile: ./Dockerfile
+        entrypoint: ["python", "notify.py"]
+        depends_on:
+            database:
+                condition: service_healthy
+        volumes:
+            - type: bind
+              source: ./notify.py
+              target: /app/notify.py
+
+    listen:
+        init: true
+        container_name: listen-service
+        build:
+            context: .
+            dockerfile: ./Dockerfile
+        entrypoint: ["python", "listen.py"]
+        depends_on:
+            database:
+                condition: service_healthy
+        volumes:
+            - type: bind
+              source: ./listen.py
+              target: /app/listen.py
+        
